@@ -1,10 +1,12 @@
 from DataStructures.Map import map_linear_probing as mlp
 from DataStructures.Graph import diagraph as G
-from DataStructures.Queue import queue as pq
+from DataStructures.Priority_queue import priority_queue as pq
 from DataStructures.Graph import dijsktra_structure as dijkstra_structure
 from DataStructures.Graph import dijsktra_structure 
 from DataStructures.Stack import stack as st
 from DataStructures.Graph import vertex as v
+from DataStructures.List import array_list as lt
+from DataStructures.Map import map_linear_probing as map
 
 import math
 
@@ -16,6 +18,7 @@ def init_structure(graph, source):
         map.put(structure["visited"], vert, {"marked":False, "edge_from":None,"dist_to":math.inf})
     map.put(structure["visited"], source, {"marked":False, "edge_from":None, "dist_to":0})
     pq.insert(structure["pq"], source, 0 )
+    
     return structure
 
 def has_path_to(vertex, structure):
