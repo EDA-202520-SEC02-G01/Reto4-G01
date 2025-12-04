@@ -10,7 +10,7 @@ def new_logic():
     """
     Crea el catalogo para almacenar las estructuras de datos
     """
-    return G.new_graph(1)
+    return G.new_graph(50000)
 
 
 # Funciones para la carga de datos
