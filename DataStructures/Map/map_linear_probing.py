@@ -30,12 +30,16 @@ def is_available(table, pos):
 
 
 def default_compare(key, entry):
+    k = me.get_key(entry)
+    if k is None or k == "__EMPTY__":
+        return -1  # Consideramos vacío → no es igual
+    if key == k:
+        return 0
+    elif key > k:
+        return 1
+    return -1
 
-   if key == me.get_key(entry):
-      return 0
-   elif key > me.get_key(entry):
-      return 1
-   return -1
+
 
 
 def put(my_map, key, value):
@@ -64,9 +68,12 @@ def rehash(my_map):
         numero_a=mf.next_prime(numero_a)
     x=new_map(numero_a,my_map["limit_factor"])
     for elemento in my_map["table"]["elements"]:
-        if elemento["key"]!=None:
-            x=put(x,elemento["key"], elemento["value"])
+        k = elemento["key"]
+        if k is not None and k != "__EMPTY__":
+            x = put(x, k, elemento["value"])
     return x
+
+
 
 def remove(my_map, key):
     for elemento in my_map["table"]["elements"]:
