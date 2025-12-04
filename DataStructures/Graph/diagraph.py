@@ -87,10 +87,9 @@ def adjacents(my_graph, key_u):
 
 def update_vertex_info(my_graph, key_u, new_info_u):
     my_map=my_graph["vertices"]
-    valor=mf.hash_value(my_map,key_u)
-    estado,pos=mp.find_slot(my_map,key_u,valor)
-    if estado:
-        my_map["table"]["elements"][pos]["value"]=new_info_u
+    vertex = mp.get(my_map, key_u)
+    if vertex is not None:
+        vtx.set_value(vertex,new_info_u)
     return my_graph    
     
     
