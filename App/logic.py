@@ -85,7 +85,9 @@ def load_data(control,filename="1000_cranes_mongolia_large.csv"):
         
         event_id = row[indices['event-id']]
         timestamp = datetime.strptime(row[indices['timestamp']],"%Y-%m-%d %H:%M:%S.%f")
-        comments_m = int(row[indices['comments']])
+        comments_raw = row[indices['comments']]
+        comments_raw = comments_raw.replace('"', '').strip()
+        comments_m = int(comments_raw)
         tag_identifier = row[indices['tag-local-identifier']]
         lon = float(row[indices['location-long']])
         lat = float(row[indices['location-lat']])
