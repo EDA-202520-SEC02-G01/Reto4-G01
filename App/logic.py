@@ -1468,11 +1468,286 @@ def reconstruct_path(prev, origen_key, destino_key):
         return None
 
 def req_6(catalog):
-    """
-    Retorna el resultado del requerimiento 6
-    """
-    # TODO: Modificar el requerimiento 6
-    pass
+
+    graph = catalog["graph"]
+
+    vertices = G.vertices(graph)
+    visited_global = mlp.new_map(num_elements=len(vertices), load_factor=0.5)
+
+    subredes = []
+    subred_id = 1
+
+    i = 0
+    while i < len(vertices):
+        v = vertices[i]
+
+        # si el nodo aún no pertenece a ninguna subred
+        if not mlp.contains(visited_global, v):
+
+            # BFS para obtener la subred completa desde v
+            componente_visit = bfs_local(graph, v)
+
+            # registrar nodo de la subred
+            keys_comp = componente_visit["table"]
+
+            subred = {
+                "id": subred_id,
+                "nodos": [],
+                "latitudes": [],
+                "longitudes": [],
+                "tags": []
+            }
+
+            j = 0
+            while j < len(keys_comp):
+                bucket = keys_comp[j]
+
+                if bucket is not None and bucket != "EMPTY" and bucket != "DELETED":
+                    nodo = bucket["key"]
+
+                    # marcar nodo como visitado global
+                    mlp.put(visited_global, nodo, True)
+
+                    # agregar nodo a la subred
+                    subred["nodos"].insert(len(subred["nodos"]), nodo)
+
+                    info = G.get_vertex_information(graph, nodo)
+
+                    lat = info.get("location-lat", "Unknown")
+                    lon = info.get("location-long", "Unknown")
+
+                    subred["latitudes"].insert(len(subred["latitudes"]), lat)
+                    subred["longitudes"].insert(len(subred["longitudes"]), lon)
+
+                    tags_dict = info.get("tag-identifiers", {})
+
+                    for t in tags_dict.keys():
+                        if not esta_en_lista(subred["tags"], t):
+                            subred["tags"].insert(len(subred["tags"]), t)
+
+                j += 1
+
+            subredes.insert(len(subredes), subred)
+            subred_id += 1
+
+        i += 1
+
+
+    # Si no hay subredes
+    if len(subredes) == 0:
+        return {
+            "mensaje": "No se identificaron subredes hídricas en el nicho biológico."
+        }
+
+    # Ordenar por tamaño de la subred
+    subredes_ordenadas = ordenar_por_tamano(subredes)
+
+    # Seleccionar máximo 5
+    limite = 5
+    if len(subredes_ordenadas) < 5:
+        limite = len(subredes_ordenadas)
+
+    primeras = []
+    p = 0
+    while p < limite:
+        sr = subredes_ordenadas[p]
+        resumen = construir_resumen_subred(graph, sr)
+        primeras.insert(len(primeras), resumen)
+        p += 1
+
+    return {
+        "total_subredes": len(subredes),
+        "top_5": primeras
+    }
+
+def esta_en_lista(lista, valor):
+    k = 0
+    while k < len(lista):
+        if lista[k] == valor:
+            return True
+        k += 1
+    return False
+
+
+
+def ordenar_por_tamano(subredes):
+    copia = []
+
+    i = 0
+    while i < len(subredes):
+        copia.insert(len(copia), subredes[i])
+        i += 1
+
+    n = len(copia)
+    a = 0
+    while a < n - 1:
+        min_idx = a
+        b = a + 1
+        while b < n:
+            tam_b = len(copia[b]["nodos"])
+            tam_min = len(copia[min_idx]["nodos"])
+            if tam_b > tam_min:
+                min_idx = b
+            b += 1
+
+        tmp = copia[a]
+        copia[a] = copia[min_idx]
+        copia[min_idx] = tmp
+
+        a += 1
+
+    return copia
+
+
+
+def construir_resumen_subred(graph, subred):
+
+    nodos = subred["nodos"]
+    lats = subred["latitudes"]
+    lons = subred["longitudes"]
+    tags = subred["tags"]
+
+    # Ordenar nodos alfabéticamente (selection sort)
+    nodos_ord = ordenar_lista(nodos)
+
+    # primeros y últimos
+    primeros3 = extraer_primeros(nodos_ord, 3)
+    ultimos3 = extraer_ultimos(nodos_ord, 3)
+
+    # ordenar tags
+    tags_ord = ordenar_lista(tags)
+
+    t_first = extraer_primeros(tags_ord, 3)
+    t_last = extraer_ultimos(tags_ord, 3)
+
+    # min / max lat/long
+    lat_min, lat_max = min_max(lats)
+    lon_min, lon_max = min_max(lons)
+
+    return {
+        "id_subred": subred["id"],
+        "lat_min": lat_min,
+        "lat_max": lat_max,
+        "lon_min": lon_min,
+        "lon_max": lon_max,
+        "total_puntos": len(nodos),
+        "primeros_puntos": primeros3,
+        "ultimos_puntos": ultimos3,
+        "total_individuos": len(tags),
+        "primeros_tags": t_first,
+        "ultimos_tags": t_last
+    }
+
+
+
+def ordenar_lista(lista):
+    nueva = []
+    i = 0
+    while i < len(lista):
+        nueva.insert(len(nueva), lista[i])
+        i += 1
+
+    n = len(nueva)
+    a = 0
+    while a < n - 1:
+        min_idx = a
+        b = a + 1
+        while b < n:
+            if nueva[b] < nueva[min_idx]:
+                min_idx = b
+            b += 1
+
+        tmp = nueva[a]
+        nueva[a] = nueva[min_idx]
+        nueva[min_idx] = tmp
+
+        a += 1
+
+    return nueva
+
+
+
+def extraer_primeros(lista, k):
+    res = []
+    i = 0
+    limite = k
+    if len(lista) < k:
+        limite = len(lista)
+
+    while i < limite:
+        res.insert(len(res), lista[i])
+        i += 1
+    return res
+
+
+
+def extraer_ultimos(lista, k):
+    res = []
+    inicio = len(lista) - k
+    if inicio < 0:
+        inicio = 0
+
+    i = inicio
+    while i < len(lista):
+        res.insert(len(res), lista[i])
+        i += 1
+
+    return res
+
+def min_max(lista):
+    if len(lista) == 0:
+        return "Unknown", "Unknown"
+
+    min_v = lista[0]
+    max_v = lista[0]
+
+    i = 1
+    while i < len(lista):
+        v = lista[i]
+        if v < min_v:
+            min_v = v
+        if v > max_v:
+            max_v = v
+        i += 1
+
+    return min_v, max_v
+
+def bfs_local(graph, source):
+    visited = mlp.new_map(num_elements=G.order(graph), load_factor=0.5)
+
+    mlp.put(visited, source, {
+        "marked": True,
+        "edge_from": None,
+        "dist_to": 0
+    })
+
+    cola = q.new_queue()
+    q.enqueue(cola, source)
+
+    while not q.is_empty(cola):
+        v = q.dequeue(cola)
+        adj_edges = G.edges_vertex(graph, v)
+
+        k = 0
+        while k < len(adj_edges):
+            edge = adj_edges[k]
+            w = edge["vertex"]
+
+            if not mlp.contains(visited, w):
+                info_v = mlp.get(visited, v)
+                dist = info_v["dist_to"] + 1
+
+                mlp.put(visited, w, {
+                    "marked": True,
+                    "edge_from": v,
+                    "dist_to": dist
+                })
+
+                q.enqueue(cola, w)
+
+            k += 1
+
+    return visited
 
 
 # Funciones para medir tiempos de ejecucion
