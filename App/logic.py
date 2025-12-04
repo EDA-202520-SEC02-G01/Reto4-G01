@@ -200,7 +200,7 @@ def reconstruir_arcos(eventos_al, grullas, grafo_base, evento_a_nodo, tipo_grafo
         tag_id = evento['tag-local-identifier']
         if tag_id not in eventos_por_grulla:
             eventos_por_grulla=mlp.put(eventos_por_grulla,tag_id,al.new_list())
-        al.add_last(eventos_por_grulla[tag_id], evento) 
+        al.add_last(mlp.get(eventos_por_grulla,tag_id), evento) 
         i = i + 1
 
     # 2. Iterar sobre cada grulla (lista simple) y crear arcos
