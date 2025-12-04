@@ -120,7 +120,7 @@ def load_data(control,filename="1000_cranes_mongolia_small.csv"):
     grafo_1=reconstruir_arcos(eventos,grullas,grafo,evento_a_nodo,"Distancias Migratorias")
     grafo_2=reconstruir_arcos(eventos,grullas,grafo,evento_a_nodo,"Proximidad de Fuentes Hídricas")
 
-    return grafo_1,grafo_2,eventos,nodo_keys_creados
+    return grafo_1,grafo_2,nodo_keys_creados
 
 def reconstruir_vertices(control,eventos_al):
     """
