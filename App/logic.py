@@ -167,8 +167,8 @@ def reconstruir_vertices(control,eventos_al):
             j = j - 1
 
         if nodo_encontrado is not None:
-            grafo=G.update_vertex_info(grafo,nodo_encontrado["key"],actualizar_info_nodo(nodo_encontrado['value'], tag_identifier, comments_m))
-            evento_a_nodo=mlp.put(evento_a_nodo,event_id,nodo_encontrado['key'])
+            grafo=G.update_vertex_info(grafo,vertice_id,actualizar_info_nodo(nodo_encontrado, tag_identifier, comments_m))
+            evento_a_nodo=mlp.put(evento_a_nodo,event_id,vertice_id)
         else:
             info_u = crear_info_nodo(event_id, lat, lon, timestamp, tag_identifier, comments_m)
             G.insert_vertex(grafo, event_id, info_u)
