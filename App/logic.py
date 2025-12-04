@@ -133,7 +133,7 @@ def reconstruir_vertices(control,eventos_al):
     
     i = 0
     size_eventos = al.size(eventos_al)
-    while i < size_eventos:
+    while i < 5:
         row = al.get_element(eventos_al, i) 
         
         event_id = row['event-id']
