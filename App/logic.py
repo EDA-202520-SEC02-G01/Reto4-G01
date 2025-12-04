@@ -195,7 +195,7 @@ def reconstruir_arcos(eventos_al, grullas, grafo_base, evento_a_nodo, tipo_grafo
     # 1. Agrupar eventos por grulla usando array_list para las listas de eventos
     i = 0
     size_eventos = al.size(eventos_al)
-    while i < size_eventos:
+    while i < 5:
         evento = al.get_element(eventos_al, i)
         tag_id = evento['tag-local-identifier']
         if tag_id not in eventos_por_grulla:
