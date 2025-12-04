@@ -67,7 +67,7 @@ def get_vertex_information(my_graph, key_u):
 
 def new_graph(order):
     grafo=["vertices"]=mp.new_map(order,0.5)
-    grafo=["num_edges"]=0
+    grafo["num_edges"]=0
     return grafo
 
 def contains_vertex(my_graph, key_u):
