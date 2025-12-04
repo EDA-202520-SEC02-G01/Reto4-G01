@@ -780,9 +780,11 @@ def req_3(catalog):
 
     return resultado
 
+
 def construir_detalles_vertices(graph, ruta, lista_ids):
     detalles = []
     k = 0
+
     while k < len(lista_ids):
         vid = lista_ids[k]
         info = G.get_vertex_information(graph, vid)
@@ -791,7 +793,6 @@ def construir_detalles_vertices(graph, ruta, lista_ids):
         tags_list = []
 
         for t in tags_dict.keys():
-
             tags_list.insert(len(tags_list), t)
 
         tags_list.sort()
@@ -817,6 +818,7 @@ def construir_detalles_vertices(graph, ruta, lista_ids):
         if indice == -1:
             dist_prev = "Unknown"
             dist_next = "Unknown"
+
         else:
             if indice == 0:
                 dist_prev = "Unknown"
@@ -827,7 +829,7 @@ def construir_detalles_vertices(graph, ruta, lista_ids):
                     dist_prev = "Unknown"
                 else:
                     dist_prev = edge_prev["weight"]
-
+                    
             if indice == len(ruta) - 1:
                 dist_next = "Unknown"
             else:
@@ -853,6 +855,7 @@ def construir_detalles_vertices(graph, ruta, lista_ids):
 
     return detalles
 
+
 def obtener_indice(lista, valor):
     i = 0
     while i < len(lista):
@@ -862,7 +865,8 @@ def obtener_indice(lista, valor):
     return -1
 
 
-def dfo(graph, v, dfo, onstack, parent, cycle_ref):
+
+def dfo_visit(graph, v, dfo, onstack, parent, cycle_ref):
     
     mlp.put(dfo["marked"], v, True)
     mlp.put(onstack, v, True)
@@ -880,7 +884,7 @@ def dfo(graph, v, dfo, onstack, parent, cycle_ref):
 
         if mlp.get(dfo["marked"], w) is None:
             parent[w] = v
-            dfo(graph, w, dfo, onstack, parent, cycle_ref)
+            dfo_visit(graph, w, dfo, onstack, parent, cycle_ref)
 
         elif mlp.get(onstack, w) is not None:
             cycle_ref["found"] = True
@@ -896,11 +900,9 @@ def dfo(graph, v, dfo, onstack, parent, cycle_ref):
             return
 
     q.enqueue(dfo["post"], v)
-
     st.push(dfo["reversepost"], v)
 
     mlp.remove(onstack, v)
-
 
 
 def depth_first_order_with_cycle(graph):
@@ -913,15 +915,16 @@ def depth_first_order_with_cycle(graph):
 
     for v in vertices:
         if mlp.get(dfo["marked"], v) is None:
-            dfo(graph, v, dfo, onstack, parent, cycle_ref)
+            dfo_visit(graph, v, dfo, onstack, parent, cycle_ref)
             if cycle_ref["found"]:
                 return None, cycle_ref["cycle"]
 
     topo = []
     while not st.is_empty(dfo["reversepost"]):
-        topo.append(st.pop(dfo["reversepost"]))
+        topo.insert(len(topo), st.pop(dfo["reversepost"]))
 
     return topo, None
+
 
 
 def longest_path_dag(graph, topo):
