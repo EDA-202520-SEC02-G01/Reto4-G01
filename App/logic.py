@@ -6,6 +6,10 @@ from datetime import datetime, timedelta
 from math import radians, sin, cos, sqrt, atan2
 from DataStructures.List import array_list as al
 from DataStructures.List import list_node as ln
+from DataStructures.Graph import vertex as vtx
+from DataStructures.Graph import dfo_structure as dfo_s
+from DataStructures.Queue import queue as q
+from DataStructures.Stack import stack as st    
 
 def new_logic():
     """
@@ -688,11 +692,260 @@ def buscar_camino_bfs(grafo, origen_key, destino_key):
 
 
 def req_3(catalog):
-    """
-    Retorna el resultado del requerimiento 3
-    """
-    # TODO: Modificar el requerimiento 3
-    pass
+
+    graph = catalog["graph"]
+
+    topo, ciclo = depth_first_order_with_cycle(graph)
+
+    if ciclo is not None:
+        return {
+            "es_dag": False,
+            "ciclo_ejemplo": ciclo,
+            "mensaje": "No existe ruta migratoria viable dentro del nicho biológico."
+        }
+
+    ruta = longest_path_dag(graph, topo)
+
+    if ruta is None:
+        return {
+            "es_dag": True,
+            "mensaje": "No se identificó una ruta migratoria válida.",
+            "cantidad_puntos": 0
+        }
+
+    if len(ruta) == 0:
+        return {
+            "es_dag": True,
+            "mensaje": "No se identificó una ruta migratoria válida.",
+            "cantidad_puntos": 0
+        }
+        
+    individuos_totales = []
+    idx_ruta = 0
+
+    while idx_ruta < len(ruta):
+        vid = ruta[idx_ruta]
+        info = G.get_vertex_information(graph, vid)
+
+        tags_dict = info.get("tag-identifiers", {})
+        tag_keys = tags_dict.keys()
+
+        for t in tag_keys:
+            ya_esta = False
+            k = 0
+            while k < len(individuos_totales):
+                if individuos_totales[k] == t:
+                    ya_esta = True
+                    break
+                k += 1
+
+            if not ya_esta:
+                individuos_totales.insert(len(individuos_totales), t)
+
+        idx_ruta += 1
+
+    primeros_ids = []
+    ultimos_ids = []
+
+    limite = 5
+    if len(ruta) < 5:
+        limite = len(ruta)
+
+    i = 0
+    while i < limite:
+        primeros_ids.insert(len(primeros_ids), ruta[i])
+        i += 1
+
+    limite_final = 5
+    if len(ruta) < 5:
+        limite_final = len(ruta)
+
+    j = len(ruta) - limite_final
+    while j < len(ruta):
+        ultimos_ids.insert(len(ultimos_ids), ruta[j])
+        j += 1
+
+    detalle_primeros = construir_detalles_vertices(graph, ruta, primeros_ids)
+    detalle_ultimos = construir_detalles_vertices(graph, ruta, ultimos_ids)
+
+    resultado = {
+        "es_dag": True,
+        "orden_topologico": topo,
+        "ruta_migratoria": ruta,
+        "cantidad_puntos": len(ruta),
+        "total_individuos_en_ruta": len(individuos_totales),
+        "primeros_5": detalle_primeros,
+        "ultimos_5": detalle_ultimos
+    }
+
+    return resultado
+
+def construir_detalles_vertices(graph, ruta, lista_ids):
+    detalles = []
+    k = 0
+    while k < len(lista_ids):
+        vid = lista_ids[k]
+        info = G.get_vertex_information(graph, vid)
+
+        tags_dict = info.get("tag-identifiers", {})
+        tags_list = []
+
+        for t in tags_dict.keys():
+
+            tags_list.insert(len(tags_list), t)
+
+        tags_list.sort()
+
+        primeros3 = []
+        x = 0
+        while x < 3 and x < len(tags_list):
+            primeros3.insert(len(primeros3), tags_list[x])
+            x += 1
+
+        ultimos3 = []
+        start = len(tags_list) - 3
+        if start < 0:
+            start = 0
+
+        y = start
+        while y < len(tags_list):
+            ultimos3.insert(len(ultimos3), tags_list[y])
+            y += 1
+
+        indice = obtener_indice(ruta, vid)
+
+        if indice == -1:
+            dist_prev = "Unknown"
+            dist_next = "Unknown"
+        else:
+            if indice == 0:
+                dist_prev = "Unknown"
+            else:
+                prev_vid = ruta[indice - 1]
+                edge_prev = vtx.get_edge(graph, prev_vid, vid)
+                if edge_prev is None:
+                    dist_prev = "Unknown"
+                else:
+                    dist_prev = edge_prev["weight"]
+
+            if indice == len(ruta) - 1:
+                dist_next = "Unknown"
+            else:
+                next_vid = ruta[indice + 1]
+                edge_next = vtx.get_edge(graph, vid, next_vid)
+                if edge_next is None:
+                    dist_next = "Unknown"
+                else:
+                    dist_next = edge_next["weight"]
+
+        detalles.insert(len(detalles), {
+            "id": vid,
+            "lat": info.get("location-lat", "Unknown"),
+            "lon": info.get("location-long", "Unknown"),
+            "num_individuos": len(tags_list),
+            "primeros_tags": primeros3,
+            "ultimos_tags": ultimos3,
+            "dist_prev": dist_prev,
+            "dist_next": dist_next
+        })
+
+        k += 1
+
+    return detalles
+
+def obtener_indice(lista, valor):
+    i = 0
+    while i < len(lista):
+        if lista[i] == valor:
+            return i
+        i += 1
+    return -1
+
+
+def dfo(graph, v, dfo, onstack, parent, cycle_ref):
+    
+    mlp.put(dfo["marked"], v, True)
+    mlp.put(onstack, v, True)
+    
+    q.enqueue(dfo["pre"], v)
+
+    adj = G.adjacents(graph, v)
+    edges = adj["elements"]
+
+    for e in edges:
+        w = e["vertex"]
+
+        if cycle_ref["found"]:
+            return
+
+        if mlp.get(dfo["marked"], w) is None:
+            parent[w] = v
+            dfo(graph, w, dfo, onstack, parent, cycle_ref)
+
+        elif mlp.get(onstack, w) is not None:
+            cycle_ref["found"] = True
+            
+            ciclo = [w]
+            cur = v
+            while cur != w:
+                ciclo.append(cur)
+                cur = parent[cur]
+            ciclo.append(w)
+            ciclo.reverse()
+            cycle_ref["cycle"] = ciclo
+            return
+
+    q.enqueue(dfo["post"], v)
+
+    st.push(dfo["reversepost"], v)
+
+    mlp.remove(onstack, v)
+
+
+
+def depth_first_order_with_cycle(graph):
+    dfo = dfo_s.new_dfo_structure(graph)
+    onstack = mlp.new_map(num_elements=G.order(graph), load_factor=0.5)
+    parent = {}
+    cycle_ref = {"found": False, "cycle": None}
+
+    vertices = G.vertices(graph)
+
+    for v in vertices:
+        if mlp.get(dfo["marked"], v) is None:
+            dfo(graph, v, dfo, onstack, parent, cycle_ref)
+            if cycle_ref["found"]:
+                return None, cycle_ref["cycle"]
+
+    topo = []
+    while not st.is_empty(dfo["reversepost"]):
+        topo.append(st.pop(dfo["reversepost"]))
+
+    return topo, None
+
+
+def longest_path_dag(graph, topo):
+    dp = {v: 1 for v in topo}
+    prev = {v: None for v in topo}
+
+    for u in topo:
+        adj = G.adjacents(graph, u)["elements"]
+        for e in adj:
+            v = e["vertex"]
+            if dp[v] < dp[u] + 1:
+                dp[v] = dp[u] + 1
+                prev[v] = u
+
+
+    fin = max(dp, key=lambda x: dp[x])
+    ruta = []
+    cur = fin
+    while cur is not None:
+        ruta.append(cur)
+        cur = prev[cur]
+    ruta.reverse()
+    return ruta
+
 
 
 def req4(graph_migratory, lat_origen_user, lon_origen_user):
