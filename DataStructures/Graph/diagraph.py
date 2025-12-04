@@ -72,18 +72,17 @@ def new_graph(order):
     return grafo
 
 def contains_vertex(my_graph, key_u):
-    res=mp.contains(my_graph,key_u)
-    return res
+
+    return mp.contains(my_graph["vertices"], key_u)
 
 def adjacents(my_graph, key_u):
-    vertex=mp.get(my_graph, key_u)
-    adj=vtx.get_adjacents(vertex)
-    if mp.is_empty(adj) == False and vertex != None:
-        return mp.key_set(adj)
-    elif vertex != None and mp.is_empty(adj) == True:
-        return []
-    else:
-        return "el vertice no existe"
+
+    vertex = mp.get(my_graph["vertices"], key_u)
+    if vertex is None:
+        raise Exception("El vertice no existe")
+
+    adj = vtx.get_adjacents(vertex)
+    return adj
 
 def update_vertex_info(my_graph, key_u, new_info_u):
     my_map=my_graph["vertices"]
@@ -91,13 +90,6 @@ def update_vertex_info(my_graph, key_u, new_info_u):
     if vertex is not None:
         vtx.set_value(vertex,new_info_u)
     return my_graph    
-    
-    
-
-
-
-    
-
 
 def insert_vertex(my_graph, key_u, info_u):
     vertex=vtx.new_vertex(key_u,info_u)
@@ -105,10 +97,6 @@ def insert_vertex(my_graph, key_u, info_u):
     return my_graph
 
 def order(my_graph):
-    cantidad=mp.size(my_graph)
+    cantidad = mp.size(my_graph["vertices"])
     return cantidad
-
-def vertices(my_graph):
-    return mp.key_set(my_graph)
-
 
