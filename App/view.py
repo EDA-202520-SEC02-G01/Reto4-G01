@@ -167,6 +167,7 @@ def main():
     """
     Menu principal
     """
+    control = new_logic()
     working = True
     #ciclo del menu
     while working:
