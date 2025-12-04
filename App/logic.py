@@ -461,8 +461,230 @@ def buscar_camino_dfs(grafo, origen_key, destino_key, visited, camino_actual):
     return None
 
 
-def req2(catalog):
-    pass
+def req2(graph_migratory, lat_origen_user, lon_origen_user, lat_destino_user, lon_destino_user, area_radius_km):
+    origen_key, destino_key = None, None
+    min_dist_origen, min_dist_destino = float('inf'), float('inf')
+    
+    all_keys_list = G.get_vertices(graph_migratory)
+    
+    current_key_node = al.get_head(all_keys_list)
+    while current_key_node is not None:
+        node_key = ln.get_element(current_key_node)
+        
+        info = G.get_vertex_information(graph_migratory, node_key)
+        lat, lon = info['location-lat'], info['location-long']
+        
+        dist_o = haversine(lat_origen_user, lon_origen_user, lat, lon) 
+        if dist_o < min_dist_origen:
+            min_dist_origen = dist_o
+            origen_key = node_key
+            
+        dist_d = haversine(lat_destino_user, lon_destino_user, lat, lon)
+        if dist_d < min_dist_destino:
+            min_dist_destino = dist_d
+            destino_key = node_key
+            
+        current_key_node = ln.get_next(current_key_node)
+
+    if origen_key is None or destino_key is None:
+        return "ERROR: No se pudieron encontrar puntos migratorios cercanos para el origen o el destino."
+
+    origen_info = G.get_vertex_information(graph_migratory, origen_key)
+    lat_origen_node = origen_info.get('location-lat', 'Unknown')
+    lon_origen_node = origen_info.get('location-long', 'Unknown')
+
+    camino_encontrado = buscar_camino_bfs(
+        graph_migratory, 
+        origen_key, 
+        destino_key
+    )
+    
+    if camino_encontrado is None:
+        return "No se reconoció un camino viable entre los puntos migratorios especificados."
+
+    total_distancia_desplazamiento = 0.0
+    nodos_en_ruta = camino_encontrado 
+    total_puntos = al.size(nodos_en_ruta)
+    last_node_in_aoi = "Desconocido"
+    
+    for i in range(total_puntos - 1):
+        u = al_get_element_by_index_safe(nodos_en_ruta, i)
+        v = al_get_element_by_index_safe(nodos_en_ruta, i+1)
+        
+        distancia_arco = get_arc_weight(graph_migratory, u, v) 
+        total_distancia_desplazamiento += distancia_arco
+        
+    for i in range(total_puntos):
+        u = al_get_element_by_index_safe(nodos_en_ruta, i)
+        u_info = G.get_vertex_information(graph_migratory, u)
+        
+        u_lat = u_info.get('location-lat', 'Unknown')
+        u_lon = u_info.get('location-long', 'Unknown')
+        
+        if u_lat != 'Unknown' and u_lon != 'Unknown' and lat_origen_node != 'Unknown' and lon_origen_node != 'Unknown':
+            dist_to_origin = haversine(lat_origen_node, lon_origen_node, u_lat, u_lon)
+            if dist_to_origin <= area_radius_km:
+                last_node_in_aoi = u
+            else:
+                pass 
+        else:
+            pass
+
+    puntos_a_mostrar = []
+    
+    indices_set = set(range(min(5, total_puntos)))
+    indices_set.update(range(max(0, total_puntos - 5), total_puntos))
+    indices_list = sorted(list(indices_set))
+
+    for i in indices_list:
+        node_key = al_get_element_by_index_safe(nodos_en_ruta, i)
+        node_info = G.get_vertex_information(graph_migratory, node_key)
+        
+        if i < total_puntos - 1:
+            next_key = al_get_element_by_index_safe(nodos_en_ruta, i+1)
+            dist_al_sig = get_arc_weight(graph_migratory, node_key, next_key)
+            if dist_al_sig == 0.0: dist_al_sig = "Desconocido"
+            else: dist_al_sig = f"{dist_al_sig:.4f}"
+        else:
+            dist_al_sig = "Fin de Ruta"
+            
+        grullas_list_al = node_info.get('tag-identifiers', al.new_list())
+        total_grullas = al.size(grullas_list_al)
+        
+        muestra_grullas = []
+        if total_grullas > 0:
+            for j in range(min(3, total_grullas)):
+                muestra_grullas.append(al_get_element_by_index_safe(grullas_list_al, j))
+            
+            if total_grullas > 6:
+                muestra_grullas.append("...")
+            
+            if total_grullas > 3:
+                start_index = max(3, total_grullas - 3) if total_grullas > 6 else 3
+                for j in range(start_index, total_grullas):
+                    muestra_grullas.append(al_get_element_by_index_safe(grullas_list_al, j))
+        
+        grullas_muestra_str = f"[{', '.join(map(str, muestra_grullas))}]"
+        if total_grullas == 0: grullas_muestra_str = "Desconocido"
+
+        puntos_a_mostrar.append({
+            'Identificador': node_key,
+            'Latitud': node_info.get('location-lat', 'Unknown'),
+            'Longitud': node_info.get('location-long', 'Unknown'),
+            'No. Individuos': total_grullas,
+            'Grullas (Muestra)': grullas_muestra_str,
+            'Desplazamiento al siguiente (km)': dist_al_sig
+        })
+        
+    respuesta = f"## Movimientos de Nicho Biológico (Radio de Interés: {area_radius_km} Km)"
+    respuesta += f"\n\n**Mensaje:** El último nodo de la ruta encontrado dentro del área de interés (radio de {area_radius_km} Km desde {origen_key}) es: **{last_node_in_aoi}**."
+    respuesta += f"\n\n- **Distancia de Desplazamiento Total:** {total_distancia_desplazamiento:.4f} Km"
+    respuesta += f"\n- **Total de Puntos (Nodos) en el Camino:** {total_puntos}"
+    respuesta += f"\n- **Punto de Origen (GPS más cercano):** {origen_key} (Distancia de aproximación: {min_dist_origen:.4f} Km)"
+    respuesta += f"\n- **Punto de Destino (GPS más cercano):** {destino_key} (Distancia de aproximación: {min_dist_destino:.4f} Km)"
+    respuesta += "\n\n### Muestra de Vértices en la Ruta (Ruta más corta por número de saltos)"
+    
+    tabla = "| Identificador | Latitud | Longitud | Grullas (Total) | Muestra de Grullas | Desplazamiento al Siguiente (km) |\n"
+    tabla += "| :--- | :--- | :--- | :--- | :--- | :--- |\n"
+    
+    for punto in puntos_a_mostrar:
+        tabla += f"| {punto['Identificador']} | {punto['Latitud']} | {punto['Longitud']} | {punto['No. Individuos']} | {punto['Grullas (Muestra)']} | {punto['Desplazamiento al siguiente (km)']} |\n"
+
+    respuesta += "\n" + tabla
+    
+    return respuesta
+
+def al_contains(al_list, element):
+    current_node = al.get_head(al_list)
+    
+    while current_node is not None:
+        if ln.get_element(current_node) == element:
+            return True
+        current_node = ln.get_next(current_node)
+        
+    return False
+
+def al_get_element_by_index_safe(al_list, index):
+    current_node = al.get_head(al_list)
+    count = 0
+    
+    while current_node is not None:
+        if count == index:
+            return ln.get_element(current_node)
+        current_node = ln.get_next(current_node)
+        count += 1
+    return None
+
+def get_arc_weight(graph, u_key, v_key):
+    info_nodo_u = G.get_vertex_information(graph, u_key)
+    vecinos_u = info_nodo_u.get('adjacents', al.new_list())
+    
+    current_node = al.get_head(vecinos_u)
+    
+    while current_node is not None:
+        arco_tuple = ln.get_element(current_node)
+        vecino_key = arco_tuple[0]
+        peso_arco = arco_tuple[1]
+        
+        if vecino_key == v_key:
+            return peso_arco
+        
+        current_node = ln.get_next(current_node)
+        
+    return 0.0
+
+def buscar_camino_bfs(grafo, origen_key, destino_key):
+    queue = al.new_list()
+    visited = mlp.new_map()
+    predecessor = mlp.new_map()
+
+    al.add_last(queue, origen_key)
+    mlp.insert_element(visited, origen_key, True) 
+    
+    found = False
+    
+    while al.size(queue) > 0:
+        
+        u = ln.get_element(al.get_head(queue)) 
+        al.remove_first(queue)
+
+        if u == destino_key:
+            found = True
+            break
+
+        info_nodo_u = G.get_vertex_information(grafo, u)
+        vecinos = info_nodo_u.get('adjacents', al.new_list()) 
+        
+        current_neighbor_node = al.get_head(vecinos)
+        while current_neighbor_node is not None:
+            vecino_tuple = ln.get_element(current_neighbor_node)
+            v = vecino_tuple[0] 
+            
+            if mlp.get_element(visited, v) is None:
+                mlp.insert_element(visited, v, True)
+                mlp.insert_element(predecessor, v, u)
+                al.add_last(queue, v)
+            
+            current_neighbor_node = ln.get_next(current_neighbor_node)
+
+    if not found:
+        return None
+    
+    path_al = al.new_list()
+    current = destino_key
+    
+    while current is not None:
+        al.add_first(path_al, current) 
+        
+        if current == origen_key:
+            break
+            
+        current = mlp.get_element(predecessor, current)
+        
+    if al.size(path_al) > 0 and ln.get_element(al.get_head(path_al)) == origen_key:
+        return path_al
+    else:
+        return None
 
 
 def req_3(catalog):
@@ -769,12 +991,225 @@ def buscar_camino_bfs(grafo, origen_key, destino_key):
         return None
 
 
-def req_5(catalog):
-    """
-    Retorna el resultado del requerimiento 5
-    """
-    # TODO: Modificar el requerimiento 5
-    pass
+def req5(graph_migratory, lat_origen_user, lon_origen_user, lat_destino_user, lon_destino_user):
+    origen_key = None
+    min_dist_origen = float('inf')
+    destino_key = None
+    min_dist_destino = float('inf')
+    
+    all_keys_list = G.get_vertices(graph_migratory)
+    
+    list_size = al.size(all_keys_list)
+    for i in range(list_size):
+        node_key = al_get_element_by_index_safe(all_keys_list, i)
+        
+        info = G.get_vertex_information(graph_migratory, node_key)
+        lat, lon = info['location-lat'], info['location-long']
+        
+        dist_o = haversine(lat_origen_user, lon_origen_user, lat, lon) 
+        if dist_o < min_dist_origen:
+            min_dist_origen = dist_o
+            origen_key = node_key
+            
+        dist_d = haversine(lat_destino_user, lon_destino_user, lat, lon) 
+        if dist_d < min_dist_destino:
+            min_dist_destino = dist_d
+            destino_key = node_key
+
+    if origen_key is None or destino_key is None:
+        return "ERROR: No se pudo encontrar un punto migratorio cercano al origen o destino."
+    
+    if origen_key == destino_key:
+        return "El origen y el destino son el mismo punto migratorio. Distancia total: 0.0 Km."
+
+    dist, prev = correr_dijkstra(graph_migratory, origen_key)
+    
+    shortest_path_list = reconstruct_path(prev, origen_key, destino_key)
+
+    if shortest_path_list is None:
+        return "No se encontró un camino viable entre los puntos migratorios especificados."
+
+    total_distance = mlp.get_element(dist, destino_key)
+    if total_distance is None:
+        return "ERROR: La distancia final no pudo ser recuperada (Dijkstra falló)."
+        
+    total_puntos = al.size(shortest_path_list)
+    total_segmentos = total_puntos - 1
+    
+    puntos_a_mostrar = []
+    
+    indices_set = set(range(min(5, total_puntos)))
+    indices_set.update(range(max(0, total_puntos - 5), total_puntos))
+    indices_list = sorted(list(indices_set))
+
+    for i in indices_list:
+        node_key = al_get_element_by_index_safe(shortest_path_list, i)
+        node_info = G.get_vertex_information(graph_migratory, node_key)
+            
+        grullas_list_al = node_info.get('tag-identifiers', al.new_list())
+        total_grullas = al.size(grullas_list_al)
+        
+        muestra_grullas = []
+        if total_grullas > 0:
+            for j in range(min(3, total_grullas)):
+                muestra_grullas.append(al_get_element_by_index_safe(grullas_list_al, j))
+            
+            if total_grullas > 6:
+                muestra_grullas.append("...")
+            
+            if total_grullas > 3:
+                start_index = max(3, total_grullas - 3) if total_grullas > 6 else 3
+                for j in range(start_index, total_grullas):
+                    muestra_grullas.append(al_get_element_by_index_safe(grullas_list_al, j))
+        
+        grullas_muestra_str = f"[{', '.join(map(str, muestra_grullas))}]"
+        if total_grullas == 0: grullas_muestra_str = "Desconocido"
+        
+        dist_al_siguiente = "---"
+        if i < total_puntos - 1:
+            next_node_key = al_get_element_by_index_safe(shortest_path_list, i + 1)
+            dist_al_siguiente = f"{get_arc_weight(graph_migratory, node_key, next_node_key):.4f} Km"
+
+        puntos_a_mostrar.append({
+            'Identificador': node_key,
+            'Latitud': node_info.get('location-lat', 'Unknown'),
+            'Longitud': node_info.get('location-long', 'Unknown'),
+            'No. Individuos': total_grullas,
+            'Grullas (Muestra)': grullas_muestra_str,
+            'Dist. Siguiente': dist_al_siguiente
+        })
+        
+    respuesta = f"## Ruta Migratoria Óptima (Algoritmo de Dijkstra)"
+    respuesta += f"\n\n- **Punto de Origen (Aprox.):** {origen_key} (Distancia de aproximación: {min_dist_origen:.4f} Km)"
+    respuesta += f"\n- **Punto de Destino (Aprox.):** {destino_key} (Distancia de aproximación: {min_dist_destino:.4f} Km)"
+    respuesta += f"\n- **Costo Total (Distancia Mínima):** {total_distance:.4f} Km"
+    respuesta += f"\n- **Total de Puntos en el Camino:** {total_puntos}"
+    respuesta += f"\n- **Total de Segmentos (Arcos):** {total_segmentos}"
+    respuesta += "\n\n### Muestra de Vértices en la Ruta Migratoria"
+    
+    tabla = "| Identificador | Latitud | Longitud | Grullas (Total) | Muestra de Grullas | Dist. al Sig. Vértice |\n"
+    tabla += "| :--- | :--- | :--- | :--- | :--- | :--- |\n"
+    
+    for punto in puntos_a_mostrar:
+        tabla += f"| {punto['Identificador']} | {punto['Latitud']} | {punto['Longitud']} | {punto['No. Individuos']} | {punto['Grullas (Muestra)']} | {punto['Dist. Siguiente']} |\n"
+
+    respuesta += "\n" + tabla
+    
+    return respuesta
+
+def al_get_element_by_index_safe(al_list, index):
+    current_node = al_list.first_node 
+    count = 0
+    result = None
+    
+    while current_node is not None and result is None:
+        if count == index:
+            result = ln.get_element(current_node)
+        
+        if result is None:
+            current_node = ln.get_next(current_node)
+            count += 1
+            
+    return result
+
+def get_arc_weight(graph, u_key, v_key):
+    info_nodo_u = G.get_vertex_information(graph, u_key)
+    vecinos_u = info_nodo_u.get('adjacents', al.new_list())
+    
+    list_size = al.size(vecinos_u)
+    result = 0.0
+    
+    for i in range(list_size):
+        arco_tuple = al_get_element_by_index_safe(vecinos_u, i)
+        vecino_key = arco_tuple[0]
+        peso_arco = arco_tuple[1]
+        
+        if vecino_key == v_key:
+            result = peso_arco
+        
+    return result
+
+def correr_dijkstra(grafo, origen_key):
+    
+    all_keys_list = G.get_vertices(grafo)
+    
+    dist = mlp.new_map()
+    prev = mlp.new_map()
+    
+    pq = pq.new_pq()
+    
+    list_size = al.size(all_keys_list)
+    for i in range(list_size):
+        key = al_get_element_by_index_safe(all_keys_list, i)
+        
+        mlp.insert_element(dist, key, float('inf'))
+        mlp.insert_element(prev, key, None)
+        
+        initial_priority = float('inf')
+        if key == origen_key:
+            initial_priority = 0
+            
+        pq.insert_element(pq, initial_priority, key) 
+
+    mlp.insert_element(dist, origen_key, 0)
+
+    while not pq.is_empty(pq):
+        
+        result_tuple = pq.extract_min(pq)
+        d_u = result_tuple[0]
+        u = result_tuple[1]
+        
+        current_dist_u = mlp.get_element(dist, u)
+        
+        if current_dist_u is not None and d_u == current_dist_u:
+            
+            u_info = G.get_vertex_information(grafo, u)
+            vecinos = u_info.get('adjacents', al.new_list()) 
+            
+            list_size = al.size(vecinos)
+            for i in range(list_size):
+                vecino_tuple = al_get_element_by_index_safe(vecinos, i)
+                v = vecino_tuple[0] 
+                peso_arco = vecino_tuple[1] 
+                
+                alt = d_u + peso_arco
+                dist_v = mlp.get_element(dist, v)
+                
+                if dist_v is not None and alt < dist_v:
+                    
+                    mlp.insert_element(dist, v, alt)
+                    mlp.insert_element(prev, v, u)
+                    
+                    pq.improve_priority(pq, alt, v)
+        
+    return dist, prev
+
+def reconstruct_path(prev, origen_key, destino_key):
+    path_al = al.new_list()
+    current = destino_key
+    
+    path_found = False
+    
+    if mlp.get_element(prev, destino_key) is not None or destino_key == origen_key:
+        path_found = True
+
+    if path_found == False:
+        return None
+        
+    reconstruction_finished = False
+    while current is not None and reconstruction_finished == False:
+        al.add_first(path_al, current) 
+        
+        if current == origen_key:
+            reconstruction_finished = True
+        
+        if reconstruction_finished == False:
+            current = mlp.get_element(prev, current)
+    
+    if al.size(path_al) > 0 and al_get_element_by_index_safe(path_al, 0) == origen_key:
+        return path_al
+    else:
+        return None
 
 def req_6(catalog):
     """
