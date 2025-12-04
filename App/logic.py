@@ -149,7 +149,7 @@ def reconstruir_vertices(control,eventos_al):
         # Iteración en reversa sobre las llaves de los nodos ya creados (array_list)
         j = al.size(nodo_keys_creados) - 1
         nodo_ya_asignado = False 
-        print(j)
+        
         while j >= 0:
             vertice_id = al.get_element(nodo_keys_creados, j) 
             vertice_completo = G.get_vertex_information(grafo, vertice_id)
