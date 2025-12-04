@@ -132,9 +132,10 @@ def reconstruir_vertices(control,eventos_al):
     nodo_keys_creados = al.new_list() 
     
     i = 0
-    print(i)
+    
     size_eventos = al.size(eventos_al)
     while i < size_eventos-1:
+        print(i)
         row = al.get_element(eventos_al, i) 
         
         event_id = row['event-id']
