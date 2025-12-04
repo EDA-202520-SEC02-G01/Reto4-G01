@@ -1,12 +1,13 @@
 import sys
-
+from App import logic as lo
+from DataStructures.List import array_list as al
+from DataStructures.Graph import diagraph as G
 
 def new_logic():
     """
         Se crea una instancia del controlador
     """
-    #TODO: Llamar la función de la lógica donde se crean las estructuras de datos
-    pass
+    return lo.new_logic()
 
 def print_menu():
     print("Bienvenido")
@@ -23,10 +24,87 @@ def load_data(control):
     """
     Carga los datos
     """
-    #TODO: Realizar la carga de datos
-    pass
-
-
+    filename=input("Introduce el nombre del archivo: ")
+    if filename=="":
+        grafo1,grafo2, nodo_keys_creados_al=lo.load_data(control)
+    else:
+        grafo1,grafo2, nodo_keys_creados_al=lo.load_data(control,filename)
+    
+    print("\nGrafo de Distancias Migratorias")
+    print("\nPrimeros 5 Nodos Creados")
+    size_nodos = al.size(nodo_keys_creados_al)
+    max_a_mostrar = 5
+    i = 0
+    while i < size_nodos:
+        if i < max_a_mostrar:
+            vertice_key = al.get_element(nodo_keys_creados_al, i) # Uso correcto de al.get_element
+            data = imprimir_info_nodo(grafo1,vertice_key)
+            print(f"  - ID: {data['id']}")
+            print(f"    - Posición (Lat, Lon): ({data['posicion'][0]:.6f}, {data['posicion'][1]:.6f})")
+            print(f"    - Fecha de Creación: {data['creacion']}")
+            print(f"    - Identificadores de Grullas: {data['grullas_id']}")
+            print(f"    - Conteo de Eventos: {data['eventos_count']}")
+        i = i + 1
+        
+    print("\nÚltimos 5 Nodos Creados")
+    inicio_ultimos = max(0, size_nodos - 5)
+    i = inicio_ultimos
+    while i < size_nodos: 
+        vertice_key = al.get_element(nodo_keys_creados_al, i) 
+        data = imprimir_info_nodo(grafo1,vertice_key)
+        print(f"  - ID: {data['id']}")
+        print(f"    - Posición (Lat, Lon): ({data['posicion'][0]:.6f}, {data['posicion'][1]:.6f})")
+        print(f"    - Fecha de Creación: {data['creacion']}")
+        print(f"    - Identificadores de Grullas: {data['grullas_id']}")
+        print(f"    - Conteo de Eventos: {data['eventos_count']}")
+        i = i + 1
+        
+    print("\n")
+    print("\nGrafo de Proximidad de Fuentes Hídricas")
+    print("\nPrimeros 5 Nodos Creados")
+    size_nodos = al.size(nodo_keys_creados_al)
+    max_a_mostrar = 5
+    i = 0
+    while i < size_nodos:
+        if i < max_a_mostrar:
+            vertice_key = al.get_element(nodo_keys_creados_al, i) # Uso correcto de al.get_element
+            data = imprimir_info_nodo(grafo2,vertice_key)
+            print(f"  - ID: {data['id']}")
+            print(f"    - Posición (Lat, Lon): ({data['posicion'][0]:.6f}, {data['posicion'][1]:.6f})")
+            print(f"    - Fecha de Creación: {data['creacion']}")
+            print(f"    - Identificadores de Grullas: {data['grullas_id']}")
+            print(f"    - Conteo de Eventos: {data['eventos_count']}")
+        i = i + 1
+        
+    print("\nÚltimos 5 Nodos Creados")
+    inicio_ultimos = max(0, size_nodos - 5)
+    i = inicio_ultimos
+    while i < size_nodos: 
+        vertice_key = al.get_element(nodo_keys_creados_al, i) 
+        data = imprimir_info_nodo(grafo2,vertice_key)
+        print(f"  - ID: {data['id']}")
+        print(f"    - Posición (Lat, Lon): ({data['posicion'][0]:.6f}, {data['posicion'][1]:.6f})")
+        print(f"    - Fecha de Creación: {data['creacion']}")
+        print(f"    - Identificadores de Grullas: {data['grullas_id']}")
+        print(f"    - Conteo de Eventos: {data['eventos_count']}")
+        i = i + 1
+    
+def imprimir_info_nodo(grafo,vertice_key):
+        """Función auxiliar para formatear la información del nodo."""
+        vertice = G.get_vertex_information(grafo, vertice_key)
+        info = vertice
+        grullas_id = []
+        for tag_id in info['tag-identifiers']: 
+            grullas_id.append(tag_id)
+        
+        return {
+            'id': info['id'],
+            'posicion': (info['location-lat'], info['location-long']),
+            'creacion': info['creation-timestamp'],
+            'grullas_id': grullas_id,
+            'eventos_count': info['events-count'],
+        }
+        
 def print_data(control, id):
     """
         Función que imprime un dato dado su ID
@@ -96,7 +174,7 @@ def main():
         inputs = input('Seleccione una opción para continuar\n')
         if int(inputs) == 0:
             print("Cargando información de los archivos ....\n")
-            data = load_data(control)
+            control = load_data(control)
         elif int(inputs) == 1:
             print_req_1(control)
 
