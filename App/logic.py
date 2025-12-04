@@ -49,7 +49,7 @@ def actualizar_info_nodo(info_nodo, tag_identifier, comments_m):
 
 # --- Funciones Principales de Carga y Preprocesamiento ---
 
-def load_data(control,filename="1000_cranes_mongolia_small.csv"):
+def load_data(control,filename="1000_cranes_mongolia_smalld.csv"):
     """
     Carga, limpia y ordena los datos del CSV 
     """
