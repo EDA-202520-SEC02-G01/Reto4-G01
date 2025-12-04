@@ -185,7 +185,6 @@ def reconstruir_vertices(control,eventos_al):
 def reconstruir_arcos(eventos_al, grullas, grafo_base, evento_a_nodo, tipo_grafo):
     """
     Calcula los arcos y los inserta en el grafo.
-    Utiliza G.new_graph, G.get_vertex, G.add_edge y funciones al.
     """
     
     grafo = grafo_base.copy()
@@ -207,7 +206,7 @@ def reconstruir_arcos(eventos_al, grullas, grafo_base, evento_a_nodo, tipo_grafo
 
     # 2. Iterar sobre cada grulla (lista simple) y crear arcos
     for tag_id in grullas:
-        if tag_id in eventos_por_grulla:
+        if tag_id in mlp.key_set(eventos_por_grulla)["elements"]:
             eventos_grulla_al = mlp.get(eventos_por_grulla,tag_id)
             nodo_previo_id = None
             
